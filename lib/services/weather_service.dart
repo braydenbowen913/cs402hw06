@@ -9,7 +9,7 @@ class WeatherResult {
 }
 
 class WeatherService {
-  static const _apiKey = 'YOUR_OPENWEATHERMAP_API_KEY_HERE';
+  static const _apiKey = 'eb430778fcec3425afc87c23f56f1b28';
 
   Future<WeatherResult> getWeather(double lat, double lon) async {
     final uri = Uri.parse(

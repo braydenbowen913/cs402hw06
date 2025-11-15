@@ -1,56 +1,55 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/settings_provider.dart';
+import '../models/app_settings.dart';
 
-class SettingsScreen extends StatefulWidget {
-  @override
-  _SettingsScreenState createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool isDarkMode = false;
-  String temperatureUnit = 'Celsius';
-  bool is24HourTime = false;
+class SettingsScreen extends StatelessWidget {
+  const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<SettingsProvider>();
+    final settings = provider.settings;
+
     return Scaffold(
-      appBar: AppBar(title: Text('Settings')),
+      appBar: AppBar(
+        title: const Text('Settings'),
+      ),
       body: ListView(
         children: [
           SwitchListTile(
-            title: Text('Dark Mode'),
-            value: isDarkMode,
-            onChanged: (bool value) {
-              setState(() {
-                isDarkMode = value;
-              });
-            },
+            title: const Text('Dark mode'),
+            value: settings.isDarkMode,
+            onChanged: (val) => provider.toggleTheme(val),
           ),
+          const Divider(),
           ListTile(
-            title: Text('Temperature Unit'),
-            trailing: DropdownButton<String>(
-              value: temperatureUnit,
-              onChanged: (String? newValue) {
-                setState(() {
-                  temperatureUnit = newValue!;
-                });
-              },
-              items: <String>['Celsius', 'Fahrenheit']
-                  .map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-            ),
+            title: const Text('Temperature units'),
+            subtitle: Text(settings.tempUnit == TemperatureUnit.celsius
+                ? 'Celsius'
+                : 'Fahrenheit'),
           ),
-          SwitchListTile(
-            title: Text('24-hour time format'),
-            value: is24HourTime,
-            onChanged: (bool value) {
-              setState(() {
-                is24HourTime = value;
-              });
+          RadioListTile<TemperatureUnit>(
+            title: const Text('Celsius'),
+            value: TemperatureUnit.celsius,
+            groupValue: settings.tempUnit,
+            onChanged: (val) {
+              if (val != null) provider.setTempUnit(val);
             },
+          ),
+          RadioListTile<TemperatureUnit>(
+            title: const Text('Fahrenheit'),
+            value: TemperatureUnit.fahrenheit,
+            groupValue: settings.tempUnit,
+            onChanged: (val) {
+              if (val != null) provider.setTempUnit(val);
+            },
+          ),
+          const Divider(),
+          SwitchListTile(
+            title: const Text('24-hour time'),
+            value: settings.use24Hour,
+            onChanged: (val) => provider.setUse24Hour(val),
           ),
         ],
       ),

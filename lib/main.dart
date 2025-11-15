@@ -1,77 +1,87 @@
 import 'package:flutter/material.dart';
-import 'package:pages/home_screen.dart';
-import 'package:pages/list_view_screen.dart';
-import 'package:pages/grid_view_screen.dart';
-import 'package:pagessettings_screen.dart';
-import 'package:models/photo.dart';
+import 'package:provider/provider.dart';
+import 'models/app_settings.dart';
+import 'providers/photo_provider.dart';
+import 'providers/settings_provider.dart';
+import 'pages/home_screen.dart';
+import 'pages/list_screen.dart';
+import 'pages/grid_screen.dart';
+import 'pages/settings_screen.dart';
 
-void main() {
-  runApp(WindowPaneApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final settingsProvider = SettingsProvider();
+  await settingsProvider.loadSettings();
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<SettingsProvider>.value(
+          value: settingsProvider,
+        ),
+        ChangeNotifierProvider(create: (_) => PhotoProvider()..loadPhotos()),
+      ],
+      child: const WindowPaneApp(),
+    ),
+  );
 }
 
 class WindowPaneApp extends StatelessWidget {
+  const WindowPaneApp({super.key});
+
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>().settings;
+
     return MaterialApp(
       title: 'WindowPane',
+      themeMode: settings.isDarkMode ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+        colorSchemeSeed: Colors.cyan,
+        brightness: Brightness.light,
+        useMaterial3: true,
       ),
-      initialRoute: '/',
+      darkTheme: ThemeData(
+        colorSchemeSeed: Colors.cyan,
+        brightness: Brightness.dark,
+        useMaterial3: true,
+      ),
       routes: {
-        '/': (context) => MainScreen(),
-        '/settings': (context) => SettingsScreen(),
+        '/': (_) => const MainScaffold(),
+        '/settings': (_) => const SettingsScreen(),
       },
     );
   }
 }
 
-class MainScreen extends StatefulWidget {
+class MainScaffold extends StatefulWidget {
+  const MainScaffold({super.key});
+
   @override
-  _MainScreenState createState() => _MainScreenState();
+  State<MainScaffold> createState() => _MainScaffoldState();
 }
 
-class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
-  final List<Photo> _photos = [
-    Photo(
-      imagePath: 'assets/sunrise.jpg',
-      description: 'Sunrise over the valley',
-      dateTime: DateTime(2024, 10, 12, 7, 35),
-      location: '123 Main Street, Boise, Idaho',
-      temperature: 12,
-      weather: 'Clear skies',
-    ),
-    Photo(
-      imagePath: 'assets/alexander.jpg',
-      description: 'Alexander home from the groomer',
-      dateTime: DateTime(2024, 7, 18, 14, 37),
-      location: '123 Main Street, Boise, Idaho',
-      temperature: 22,
-      weather: 'Sunny',
-    ),
+class _MainScaffoldState extends State<MainScaffold> {
+  int _index = 0;
+
+  final _screens = const [
+    HomeScreen(),
+    ListScreen(),
+    GridScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('WindowPane'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings),
-            onPressed: () {
-              Navigator.pushNamed(context, '/settings');
-            },
-          ),
-        ],
+      body: IndexedStack(
+        index: _index,
+        children: _screens,
       ),
-      body: _getScreenForIndex(),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
-        items: [
+        currentIndex: _index,
+        onTap: (i) => setState(() => _index = i),
+        items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: 'Home',
@@ -86,31 +96,6 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Trigger the camera functionality
-        },
-        child: Icon(Icons.camera_alt),
-      ),
     );
-  }
-
-  Widget _getScreenForIndex() {
-    switch (_currentIndex) {
-      case 0:
-        return HomeScreen(currentPhoto: _photos[0]); // Pass the first photo for example
-      case 1:
-        return ListViewScreen(photos: _photos);
-      case 2:
-        return GridViewScreen(photos: _photos);
-      default:
-        return HomeScreen(currentPhoto: _photos[0]);
-    }
-  }
-
-  void _onTabTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
   }
 }

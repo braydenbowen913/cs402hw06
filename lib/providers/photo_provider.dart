@@ -52,11 +52,11 @@ class PhotoProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addNewPhoto() async {
+  Future<PhotoEntry?> addNewPhoto() async {
     try {
       // 1. Take the photo
       final imagePath = await _photoService.takePhoto();
-      if (imagePath == null) return; // user cancelled camera
+    if (imagePath == null) return null; // user cancelled
 
       final now = DateTime.now();
 
@@ -74,9 +74,7 @@ class PhotoProvider extends ChangeNotifier {
         longitude = position.longitude;
         locationName =
             '${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}';
-      } catch (e) {
-        debugPrint('Location error: $e');
-      }
+      } catch (_) {}
 
       // 4. Try to get weather (only if we have some coords)
       try {
@@ -102,16 +100,19 @@ class PhotoProvider extends ChangeNotifier {
       // 6. Save to DB
       final db = await DBService().database;
       final id = await db.insert('photos', newEntry.toMap());
+      final entryWithId = newEntry.copyWith(id: id);
 
       // 7. Update in-memory list & clear any search filter
       _searchQuery = '';
-      _photos.insert(0, newEntry.copyWith(id: id));
+      _photos.insert(0, entryWithId);
       _currentIndex = 0;
       notifyListeners();
 
+      return entryWithId;
       debugPrint('Photo saved with id: $id');
     } catch (e, st) {
       debugPrint('addNewPhoto failed: $e\n$st');
+      return null;
     }
   }
 

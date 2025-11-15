@@ -189,11 +189,49 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await context.read<PhotoProvider>().addNewPhoto();
-          _pageController.jumpToPage(0);
-        },
         child: const Icon(Icons.add),
+        onPressed: () async {
+          final photoProvider = context.read<PhotoProvider>();
+
+          // 1. Take photo + save metadata
+          final newEntry = await photoProvider.addNewPhoto();
+          if (newEntry == null) return; // user cancelled or error
+
+          // 2. Ask user for title/description
+          final controller = TextEditingController(text: newEntry.description);
+
+          final newText = await showDialog<String>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Add title / description'),
+              content: TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. Sunrise over the valley',
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Skip'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+          );
+
+          // 3. If user entered something, update the description
+          if (newText != null && newText.isNotEmpty) {
+            await photoProvider.updateDescription(newEntry, newText);
+          }
+
+          // Optionally jump to the first page (newest photo)
+          // _pageController.jumpToPage(0);   // if you still want this
+        },
       ),
     );
   }

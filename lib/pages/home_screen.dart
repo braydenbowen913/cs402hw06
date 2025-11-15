@@ -72,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final settings = context.watch<SettingsProvider>().settings;
 
     final photos = photoProvider.filteredPhotos;
-    final current = photoProvider.currentPhoto;
+    //final current = photoProvider.currentPhoto;
 
     String formatTime(DateTime dt) {
       if (settings.use24Hour) {

@@ -53,34 +53,66 @@ class PhotoProvider extends ChangeNotifier {
   }
 
   Future<void> addNewPhoto() async {
-    final imagePath = await _photoService.takePhoto();
-    if (imagePath == null) return;
+    try {
+      // 1. Take the photo
+      final imagePath = await _photoService.takePhoto();
+      if (imagePath == null) return; // user cancelled camera
 
-    final now = DateTime.now();
-    final position = await _locationService.getCurrentPosition();
-    final weather =
-        await _weatherService.getWeather(position.latitude, position.longitude);
+      final now = DateTime.now();
 
-    // Very simple location string; you could add reverse geocoding if you like.
-    final locationName =
-        '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+      // 2. Default metadata (in case services fail)
+      double latitude = 0;
+      double longitude = 0;
+      String locationName = 'Unknown location';
+      String weatherDescription = 'Unknown weather';
+      double temperatureC = 0;
 
-    final newEntry = PhotoEntry(
-      imagePath: imagePath,
-      description: 'New photo',
-      timestamp: now,
-      latitude: position.latitude,
-      longitude: position.longitude,
-      locationName: locationName,
-      weatherDescription: weather.description,
-      temperatureC: weather.tempC,
-    );
+      // 3. Try to get GPS
+      try {
+        final position = await _locationService.getCurrentPosition();
+        latitude = position.latitude;
+        longitude = position.longitude;
+        locationName =
+            '${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}';
+      } catch (e) {
+        debugPrint('Location error: $e');
+      }
 
-    final db = await DBService().database;
-    final id = await db.insert('photos', newEntry.toMap());
-    _photos.insert(0, newEntry.copyWith(id: id));
-    _currentIndex = 0;
-    notifyListeners();
+      // 4. Try to get weather (only if we have some coords)
+      try {
+        final weather = await _weatherService.getWeather(latitude, longitude);
+        weatherDescription = weather.description;
+        temperatureC = weather.tempC;
+      } catch (e) {
+        debugPrint('Weather error: $e');
+      }
+
+      // 5. Build entry
+      final newEntry = PhotoEntry(
+        imagePath: imagePath,
+        description: 'New photo',
+        timestamp: now,
+        latitude: latitude,
+        longitude: longitude,
+        locationName: locationName,
+        weatherDescription: weatherDescription,
+        temperatureC: temperatureC,
+      );
+
+      // 6. Save to DB
+      final db = await DBService().database;
+      final id = await db.insert('photos', newEntry.toMap());
+
+      // 7. Update in-memory list & clear any search filter
+      _searchQuery = '';
+      _photos.insert(0, newEntry.copyWith(id: id));
+      _currentIndex = 0;
+      notifyListeners();
+
+      debugPrint('Photo saved with id: $id');
+    } catch (e, st) {
+      debugPrint('addNewPhoto failed: $e\n$st');
+    }
   }
 
   Future<void> deletePhoto(PhotoEntry entry) async {
